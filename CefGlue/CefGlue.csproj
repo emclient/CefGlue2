@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Xilium.CefGlue</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Disabled Sources -->
+  <ItemGroup>
+    <Compile Remove="Interop\Base\cef_string_t.disabled.cs" />
+    <None Include="Interop\Base\cef_string_t.disabled.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CefGlue.Interop.Gen\CefGlue.Interop.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <!-- Source generator inputs -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="CefApiVersion" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(CefIncludePath)' == ''">
+    <PackageReference Include="cef.sdk" Version="137.0.10" GeneratePathProperty="true" />
+    <AdditionalFiles Include="$(Pkgcef_sdk)\CEF\include\**\*.h" Exclude="$(Pkgcef_sdk)\CEF\include\include\**\*.h" Link="include\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(CefIncludePath)' != ''">
+    <AdditionalFiles Include="$(CefIncludePath)\**\*.h" Link="include\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- Source generator debugging -->
+  <ItemGroup>
+    <Compile Remove="Generated\**" />
+    <EmbeddedResource Remove="Generated\**" />
+    <None Remove="Generated\**" />
+  </ItemGroup>
+  <PropertyGroup>
+    <GeneratedFilesLocation>Generated</GeneratedFilesLocation>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>$(GeneratedFilesLocation)</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+</Project>
