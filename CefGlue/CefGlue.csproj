@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CefGlue.Interop.Gen\CefGlue.Interop.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <PackageReference Include="Cef.Runtime" Version="$(CefRuntimeVersion)" GeneratePathProperty="true" />
+    <PackageReference Include="Cef.Runtime" Version="$(CefRuntimeVersion)" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="none" />
   </ItemGroup>
 
   <!-- Source generator inputs -->
