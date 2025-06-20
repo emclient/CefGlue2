@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build NuGet packages
+        run: |
+          dotnet pack CefGlue -o artifacts
+
+      - name: Publish on GitHub
+        run: |
+          find artifacts -name '*.nupkg' | xargs -i dotnet nuget push {} -s https://nuget.pkg.github.com/emclient/index.json --api-key ${{ secrets.GITHUB_TOKEN }}
