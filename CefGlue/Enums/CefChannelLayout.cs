@@ -2,8 +2,6 @@
 // This file manually written from cef/include/internal/cef_types.h.
 // C API name: cef_channel_layout_t.
 //
-global using cef_channel_layout_t = Xilium.CefGlue.CefChannelLayout;
-
 namespace Xilium.CefGlue;
 
 /// <summary>

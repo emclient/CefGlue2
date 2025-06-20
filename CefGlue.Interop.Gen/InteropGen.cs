@@ -1,5 +1,4 @@
-﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 
 namespace CefParser
 {
@@ -195,7 +194,7 @@ namespace CefParser
             writer.WriteLine(")");
             writer.WriteLine("\t{");
             writer.WriteLine("\t\tvar _this = FromNativeNoRelease(self);");
-            
+
             foreach (var arg in func.Arguments)
             {
                 var csharpType = arg.Type.CSharpType;
@@ -394,7 +393,7 @@ namespace CefParser
                     var argName = NameConverter.CInteropToCSharp(arg.Name, startSmall: true);
                     var quotedArgName = NameConverter.QuoteName(argName);
                     var quotedInteropArgName = NameConverter.QuoteName(arg.Name);
-                    
+
                     // Marshal return value
                     switch (arg.Type.ArgumentClass)
                     {
@@ -483,7 +482,8 @@ namespace CefParser
             else
             {
                 bool isAbstract = func is CefParser.VirtualFunction { IsAbstract: true };
-                string returnValue = func.DefaultReturnValue switch {
+                string returnValue = func.DefaultReturnValue switch
+                {
                     "RV_CONTINUE" => "CefReturnValue.Continue",
                     _ => "default"
                 };
@@ -847,7 +847,7 @@ namespace CefParser
 
             bool isRefCountedImpl = cls.ParentName is "CefBaseRefCounted";
             bool isScopedImpl = cls.ParentName is "CefBaseScoped";
-            string maybeSealedModifier =  "sealed ";
+            string maybeSealedModifier = "sealed ";
 
             if (nameToIsParent.Contains(cls.Name))
                 maybeSealedModifier = "";
@@ -1181,6 +1181,34 @@ namespace CefParser
 
                 writer.WriteLine("}");
             }
+        }
+
+        public void GenerateEnum(CefParser.EnumDef enumDef, TextWriter writer)
+        {
+            WriteHeader(writer);
+
+            writer.WriteLine($"global using {enumDef.Name} = Xilium.CefGlue.{NameConverter.ToCInteropClassName(enumDef.Name, CefParser.TypeClass.Enum)};");
+            writer.WriteLine("using System;");
+            writer.WriteLine();
+
+            writer.WriteLine("namespace Xilium.CefGlue;");
+            writer.WriteLine();
+
+            // TODO: Values starting with digits have to be manually bound for now
+            if (enumDef.Values.Any(v => char.IsDigit(v.CSharpName[0])))
+            {
+                writer.WriteLine($"// Failed to convert {enumDef.Name}");
+                return;
+            }
+
+            if (enumDef.IsFlags)
+                writer.WriteLine("[Flags]");
+
+            writer.WriteLine($"public enum {NameConverter.ToCInteropClassName(enumDef.Name, CefParser.TypeClass.Enum)}{(enumDef.IsUint ? " : uint" : "")}");
+            writer.WriteLine("{");
+            foreach (var enumValue in enumDef.Values)
+                writer.WriteLine($"\t{enumValue.CSharpName}{(!string.IsNullOrWhiteSpace(enumValue.CSharpValue) ? " = " + enumValue.CSharpValue : "")},");
+            writer.WriteLine("}");
         }
 
         public void GenerateVersionFile(TextWriter writer)

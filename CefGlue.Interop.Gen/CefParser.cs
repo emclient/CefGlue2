@@ -8,12 +8,14 @@ namespace CefParser
         List<TypeDef> typeDefs = new();
         Dictionary<string, string> globalTypeDefMap = new();
         Dictionary<string, string> versionProperties = new();
+        List<EnumDef> enums = new();
         List<Function> globalFunctions = new();
         List<Class> classes = new();
         HashSet<string> enumNames = new();
 
         public IReadOnlyList<Function> GlobalFunctions => globalFunctions;
         public IReadOnlyList<Class> Classes => classes;
+        public IReadOnlyList<EnumDef> Enums => enums;
         public IReadOnlyDictionary<string, string> VersionProperties => versionProperties;
         public int StableApiVersion { get; private set; }
         public Dictionary<int, string> ApiHashWindows { get; private set; } = new();
@@ -44,12 +46,14 @@ namespace CefParser
 
             if (fileName is "cef_types.h" || fileName.StartsWith("cef_types_"))
             {
-                // Find out global enum and struct names
+                // Find out global enum names
                 var enumMatch = EnumRegex().Match(fileData);
                 while (enumMatch.Success)
                 {
+                    var enumBody = enumMatch.Groups[1].Value;
                     var enumName = enumMatch.Groups[2].Value;
                     enumNames.Add(enumName);
+                    ParseEnumBody(enumName, enumBody);
                     enumMatch = enumMatch.NextMatch();
                 }
             }
@@ -100,9 +104,9 @@ namespace CefParser
                     throw new FormatException($"Invalid typedef: {value}");
                 var alias = value[(pos + 1)..];
                 value = value[0..pos];
-                
+
                 typeDefs.Add(new TypeDef(fileName, value, alias));
-                
+
                 typeDefMatch = typeDefMatch.NextMatch();
             }
 
@@ -211,6 +215,62 @@ namespace CefParser
 
                 classMatch = classMatch.NextMatch();
             }
+        }
+
+        private void ParseEnumBody(string enumName, string enumBody)
+        {
+            bool isUint = enumName is "cef_transition_type_t" or "cef_drag_operations_mask_t"; // HACK: Special case
+            bool isFlags = isUint;
+            List<(string Name, string Value)> values = new();
+            var enumValueMatch = EnumValueRegex().Match(enumBody);
+
+            while (enumValueMatch.Success)
+            {
+                var enumValueName = enumValueMatch.Groups[1].Value;
+                var enumValueValue = enumValueMatch.Groups[3].Value;
+
+                if (enumValueValue.Contains("<<"))
+                    isFlags = true;
+
+                if (enumValueName is not "CEF_CONTENT_SETTING_TOP_LEVEL_TPCD_ORIGIN_TRIAL" && // HACK: Fixed name under #if
+                    !enumValueName.EndsWith("_NUM_VALUES"))
+                    values.Add((enumValueName, enumValueValue));
+
+                enumValueMatch = enumValueMatch.NextMatch();
+            }
+
+            // Find common prefix
+            int longestPrefixLength = 0;
+            if (values.Count > 0)
+            {
+                string longestPrefix = values[0].Name;
+                for (int i = 1; i < values.Count; i++)
+                {
+                    var currentName = values[i].Name;
+                    int commonPrefixLength = 0;
+                    while (commonPrefixLength < currentName.Length && commonPrefixLength < longestPrefix.Length && currentName[commonPrefixLength] == longestPrefix[commonPrefixLength])
+                        commonPrefixLength++;
+                    if (commonPrefixLength < longestPrefix.Length)
+                        longestPrefix = currentName[..commonPrefixLength];
+                }
+
+                // Cut the common prefix at last _
+                longestPrefixLength = longestPrefix.LastIndexOf('_') + 1;
+            }
+
+            List<EnumValue> translatedValues = new();
+            foreach (var (name, value) in values)
+            {
+                string csharpName = NameConverter.ToCSharpEnumValueName(name[longestPrefixLength..]);
+                string csharpValue =
+                    value is "" || !char.IsLetter(value[0]) ? value :
+                    value is "UINT_MAX" ? "uint.MaxValue" :
+                    value.Length > longestPrefixLength ? NameConverter.ToCSharpEnumValueName(value[longestPrefixLength..]) :
+                    value;
+                translatedValues.Add(new EnumValue(name, csharpName, value, csharpValue));
+            }
+
+            enums.Add(new EnumDef(enumName, translatedValues, isFlags, isUint));
         }
 
         (TypeClass, string) ResolveType(string typeName)
@@ -400,6 +460,9 @@ namespace CefParser
 
         [GeneratedRegex($"defined\\(OS_(WIN|MAC|LINUX)\\)\n#define{_cre_space}CEF_API_HASH_([0-9]+){_cre_space}\"([0-9a-f]*)\"", RegexOptions.Multiline)]
         private static partial Regex ApiHashRegex();
+
+        [GeneratedRegex($"^\\s+([A-Z_]+)( = (.+?),?)?")];
+        private static partial Regex EnumValueRegex();
 #else
         private static Regex globalTypeDefRegex = new Regex($"\ntypedef{_cre_space}{_cre_typedef};", RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
         private static Regex GlobalTypeDefRegex() => globalTypeDefRegex;
@@ -430,6 +493,9 @@ namespace CefParser
 
         private static Regex apiHashRegex = new Regex($"defined\\(OS_(WIN|MAC|LINUX)\\)\n#define{_cre_space}CEF_API_HASH_([0-9]+){_cre_space}\"([0-9a-f]*)\"", RegexOptions.Multiline | RegexOptions.Compiled);
         private static Regex ApiHashRegex() => apiHashRegex;
+
+        private static Regex enumValueRegex = new Regex($"^\\s+([A-Z0-9a-z_]+)({_cre_space}={_cre_space}(.+?)[,\\n])?", RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.Compiled);
+        private static Regex EnumValueRegex() => enumValueRegex;
 #endif
     }
 }

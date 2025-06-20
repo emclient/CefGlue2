@@ -6,16 +6,6 @@ namespace Xilium.CefGlue;
 public sealed unsafe partial class CefX509Certificate
 {
     /// <summary>
-    /// Returns the DER encoded data for the X.509 certificate.
-    /// </summary>
-    public CefBinaryValue GetDerEncoded() => GetDEREncoded();
-
-    /// <summary>
-    /// Returns the PEM encoded data for the X.509 certificate.
-    /// </summary>
-    public CefBinaryValue GetPemEncoded() => GetPEMEncoded();
-
-    /// <summary>
     /// Returns the number of certificates in the issuer chain.
     /// If 0, the certificate is self-signed.
     /// </summary>

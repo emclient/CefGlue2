@@ -6,14 +6,9 @@ namespace Xilium.CefGlue;
 public sealed unsafe partial class CefPrintSettings
 {
     /// <summary>
-    /// Set the DPI (dots per inch).
-    /// </summary>
-    public void SetDpi(int dpi) => SetDPI(dpi);
-
-    /// <summary>
     /// Get the DPI (dots per inch).
     /// </summary>
-    public int GetDpi() => DPI;
+    public int GetDpi() => Dpi;
 
     /// <summary>
     /// Returns the number of page ranges that currently exist.

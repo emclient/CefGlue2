@@ -22,7 +22,15 @@ foreach (var c in cp.Classes)
 Directory.CreateDirectory("Classes.g");
 foreach (var c in cp.Classes)
 {
-    var csName = c.Name.Replace("DOM", "Dom").Replace("SSL", "Ssl").Replace("URL", "Url"); // FIXME
+    var csName = NameConverter.ToCSharpClassName(c.Name, CefParser.CefParser.TypeClass.Class);
     using var writer = new StreamWriter($"Classes.g\\{csName}.g.cs");
     interopGen.GenerateWrapper(c, writer);
+}
+
+Directory.CreateDirectory("Enums");
+foreach (var e in cp.Enums)
+{
+    var csName = NameConverter.ToCSharpClassName(e.Name, CefParser.CefParser.TypeClass.Enum);
+    using var writer = new StreamWriter($"Enums\\{csName}.g.cs");
+    interopGen.GenerateEnum(e, writer);
 }

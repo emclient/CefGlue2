@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace CefParser
 {
@@ -135,7 +134,7 @@ namespace CefParser
                     if (ap.StartsWith("default_retval="))
                         DefaultReturnValue = ap[15..];
                 }
-            }            
+            }
         }
 
         public class VirtualFunction : Function
