@@ -14,15 +14,16 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CefGlue.Interop.Gen\CefGlue.Interop.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <PackageReference Include="Cef.Runtime" Version="$(CefRuntimeVersion)" GeneratePathProperty="true" />
   </ItemGroup>
 
   <!-- Source generator inputs -->
   <ItemGroup>
     <CompilerVisibleProperty Include="CefApiVersion" />
   </ItemGroup>
+
   <ItemGroup Condition="'$(CefIncludePath)' == ''">
-    <PackageReference Include="cef.sdk" Version="137.0.10" GeneratePathProperty="true" />
-    <AdditionalFiles Include="$(Pkgcef_sdk)\CEF\include\**\*.h" Exclude="$(Pkgcef_sdk)\CEF\include\include\**\*.h" Link="include\%(RecursiveDir)%(Filename)%(Extension)" />
+    <AdditionalFiles Include="$(PkgCef_Runtime)\include\**\*.h" Link="include\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(CefIncludePath)' != ''">
     <AdditionalFiles Include="$(CefIncludePath)\**\*.h" Link="include\%(RecursiveDir)%(Filename)%(Extension)" />

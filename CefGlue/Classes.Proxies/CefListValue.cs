@@ -3,6 +3,8 @@ using Xilium.CefGlue.Interop;
 
 namespace Xilium.CefGlue;
 
+#nullable enable
+
 public sealed unsafe partial class CefListValue
 {
     /// <summary>
