@@ -19,6 +19,10 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Setup NuGet.config
+        run: |
+          dotnet nuget add source --username emclient --password ${{ secrets.GITHUB_TOKEN }} --store-password-in-clear-text --name github-emclient "https://nuget.pkg.github.com/emclient/index.json"
+
       - name: Build NuGet packages
         run: |
           dotnet pack CefGlue -o artifacts
