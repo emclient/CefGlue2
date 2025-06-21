@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <AssemblyName>Xilium.CefGlue</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PackageId>Cef.Glue</PackageId>
   </PropertyGroup>
 
   <!-- Disabled Sources -->
@@ -14,7 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CefGlue.Interop.Gen\CefGlue.Interop.Gen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-    <PackageReference Include="Cef.Runtime" Version="$(CefRuntimeVersion)" GeneratePathProperty="true" ExcludeAssets="all" PrivateAssets="none" />
+    <PackageReference Include="Cef.Runtime" Version="$(CefRuntimeVersion)" GeneratePathProperty="true" PrivateAssets="analyzers;build" />
   </ItemGroup>
 
   <!-- Source generator inputs -->
