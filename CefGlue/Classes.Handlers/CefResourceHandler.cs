@@ -7,11 +7,21 @@ public abstract unsafe partial class CefResourceHandler
 {
     private partial bool Read(IntPtr dataOut, int bytesToRead, ref int bytesRead, CefResourceReadCallback callback)
     {
-
-        using var m_stream = new UnmanagedMemoryStream((byte*)dataOut, bytesToRead, bytesToRead, FileAccess.Write);
-        var m_result = Read(m_stream, bytesToRead, out var m_bytesRead, callback);
-        bytesRead = m_bytesRead;
-        return m_result;
+        var m_stream = new UnmanagedMemoryStream((byte*)dataOut, bytesToRead, bytesToRead, FileAccess.Write);
+        try
+        {
+            var m_result = Read(m_stream, bytesToRead, out var m_bytesRead, callback);
+            if (m_bytesRead != 0 || m_result != true)
+                m_stream.Dispose();
+            bytesRead = m_bytesRead;
+            return m_result;
+        }
+        catch (Exception ex)
+        {
+            m_stream.Dispose();
+            bytesRead = 0;
+            return false;
+        }
     }
 
     /// <summary>
