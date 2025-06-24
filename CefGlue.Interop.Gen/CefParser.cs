@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Collections.Immutable;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace CefParser
@@ -217,8 +218,54 @@ namespace CefParser
             }
         }
 
+        private string PreprocessBody(string body)
+        {
+            using var reader = new StringReader(body);
+            using var writer = new StringWriter();
+
+            string line;
+            ImmutableStack<bool> ifStack = ImmutableStack<bool>.Empty;
+            bool currentState = true;
+            while ((line = reader.ReadLine()) != null)
+            {
+                // TODO: We don't check the versions and always produce the latest
+                // version of the enum!
+                if (line.StartsWith("#"))
+                {
+                    if (line.StartsWith("#if CEF_API_ADDED("))
+                        ifStack = ifStack.Push(true);
+                    else if (line.StartsWith("#if CEF_API_REMOVED("))
+                        ifStack = ifStack.Push(false);
+                    else if (line.StartsWith("#endif"))
+                        ifStack = ifStack.Pop();
+                    else if (line.StartsWith("#else"))
+                    {
+                        bool lastValue = ifStack.Peek();
+                        ifStack = ifStack.Pop().Push(lastValue);
+                    }
+                    else
+                        throw new FormatException($"Unsupported preprocessor macro ({line})");
+                    currentState = ifStack.IsEmpty || ifStack.All(a => a);
+                }
+
+                if (currentState)
+                {
+                    writer.WriteLine(line);
+                }
+            }
+
+            return writer.ToString();
+        }
+
         private void ParseEnumBody(string enumName, string enumBody)
         {
+            // cef_error_code_t uses #include and advanced preprocessing we
+            // currently don't support.
+            if (enumBody.Contains("#if") && enumName != "cef_errorcode_t")
+            {
+                enumBody = PreprocessBody(enumBody);
+            }
+
             bool isUint = enumName is "cef_transition_type_t" or "cef_drag_operations_mask_t"; // HACK: Special case
             bool isFlags = isUint;
             List<(string Name, string Value)> values = new();

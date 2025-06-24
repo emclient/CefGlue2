@@ -1195,7 +1195,9 @@ namespace CefParser
             writer.WriteLine();
 
             // TODO: Values starting with digits have to be manually bound for now
-            if (enumDef.Values.Any(v => char.IsDigit(v.CSharpName[0])))
+            // and we can't preprocess cef_errorcode_t yet
+            if (enumDef.Values.Any(v => char.IsDigit(v.CSharpName[0])) ||
+                enumDef.Name is "cef_errorcode_t")
             {
                 writer.WriteLine($"// Failed to convert {enumDef.Name}");
                 return;
