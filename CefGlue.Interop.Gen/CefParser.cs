@@ -241,11 +241,12 @@ namespace CefParser
                     else if (line.StartsWith("#else"))
                     {
                         bool lastValue = ifStack.Peek();
-                        ifStack = ifStack.Pop().Push(lastValue);
+                        ifStack = ifStack.Pop().Push(!lastValue);
                     }
                     else
                         throw new FormatException($"Unsupported preprocessor macro ({line})");
                     currentState = ifStack.IsEmpty || ifStack.All(a => a);
+                    continue;
                 }
 
                 if (currentState)
