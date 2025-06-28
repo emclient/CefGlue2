@@ -3,7 +3,7 @@
     <!-- Use this to override the source path for the CEF include headers -->
     <!-- <CefIncludePath></CefIncludePath> -->
     <!-- Version of the Cef.Runtime NuGet package -->
-    <CefRuntimeVersion Condition="'$(CefRuntimeVersion)' == ''">138.0.29-em</CefRuntimeVersion>
+    <CefRuntimeVersion Condition="'$(CefRuntimeVersion)' == ''">138.0.30-em</CefRuntimeVersion>
     <!-- Version of CEF API to bind -->
     <CefApiVersion Condition="'$(CefApiVersion)' == ''">experimental</CefApiVersion>
   </PropertyGroup>
