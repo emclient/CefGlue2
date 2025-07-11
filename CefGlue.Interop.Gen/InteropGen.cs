@@ -859,7 +859,7 @@ namespace CefParser
 
             if (isHandler)
             {
-                writer.WriteLine($"public abstract unsafe partial class {csName}");
+                writer.WriteLine($"public abstract unsafe partial class {csName} : IDisposable");
                 writer.WriteLine("{");
 
                 writer.WriteLine($"\tprivate {iname}* _self;");
@@ -897,12 +897,37 @@ namespace CefParser
                 writer.WriteLine("\t}");
                 writer.WriteLine();
 
-                writer.WriteLine("\tprivate void Dispose()");
+                writer.WriteLine("\tpublic void Dispose()");
                 writer.WriteLine("\t{");
+                writer.WriteLine($"\t\tif (_self != null && ((cef_handler_block_t *)((nuint)_self + (nuint)sizeof({iname})))->_refct != 0)");
+                writer.WriteLine("\t\t\tthrow new InvalidOperationException($\"Cannot dispose handler with an active reference from native CEF runtime\");");
                 writer.WriteLine("\t\tDispose(true);");
                 writer.WriteLine("\t\tGC.SuppressFinalize(this);");
                 writer.WriteLine("\t}");
                 writer.WriteLine();
+
+                // We expose the AutoDispose property to control the behavior when the native
+                // CEF runtime releases the last reference to a handler. Implementations of
+                // handlers that are cached and returned in subsequent call should override
+                // the property and return false. Ideally we want to enable auto-dispose for
+                // all the handlers but for compatibility with historic CefGlue versions we
+                // default to the list below. Any subclasses could choose to explicitly
+                // override it. Regular garbage collection can still collect the classes
+                // but there's no explicit lifetime guarantee.
+                bool autoDispose =
+                    csName
+                    is "CefResourceHandler"
+                    or "CefStringVisitor"
+                    or "CefCookieVisitor"
+                    or "CefWebPluginInfoVisitor"
+                    or "CefNavigationEntryVisitor"
+                    or "CefSetCookieCallback"
+                    or "CefDeleteCookiesCallback"
+                    or "CefResponseFilter"
+                    or "CefMediaSinkDeviceInfoCallback";
+                writer.WriteLine($"\tprotected virtual bool AutoDispose => {(autoDispose ? "true" : "false")};");
+                writer.WriteLine();
+
 
                 writer.WriteLine("\tprotected virtual void Dispose(bool disposing)");
                 writer.WriteLine("\t{");
@@ -944,7 +969,11 @@ namespace CefParser
                 writer.WriteLine("\t\t\tGCHandle _gcHandle = GCHandle.FromIntPtr(ptrBlock->_gcHandle);");
                 writer.WriteLine($"\t\t\t{csName}? _this = _gcHandle.Target as {csName};");
                 writer.WriteLine("\t\t\tDebug.Assert(_this is not null);");
-                // TODO: Autodispose?
+                writer.WriteLine("\t\t\tif (_this.AutoDispose)");
+                writer.WriteLine("\t\t\t{");
+                writer.WriteLine("\t\t\t\t_this.Dispose();");
+                writer.WriteLine("\t\t\t\treturn 1;");
+                writer.WriteLine("\t\t\t}");
                 writer.WriteLine("\t\t\tGCHandle _newGcHandle = GCHandle.Alloc(_this, GCHandleType.Weak);");
                 writer.WriteLine("\t\t\t_gcHandle.Free();");
                 writer.WriteLine("\t\t\tptrBlock->_gcHandle = GCHandle.ToIntPtr(_newGcHandle);");
