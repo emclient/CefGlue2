@@ -218,13 +218,20 @@ namespace CefParser
             }
         }
 
+        enum IfState
+        {
+            True,
+            False,
+            Skip
+        }
+
         private string PreprocessBody(string body)
         {
             using var reader = new StringReader(body);
             using var writer = new StringWriter();
 
             string line;
-            ImmutableStack<bool> ifStack = ImmutableStack<bool>.Empty;
+            var ifStack = ImmutableStack<IfState>.Empty;
             bool currentState = true;
             while ((line = reader.ReadLine()) != null)
             {
@@ -233,19 +240,24 @@ namespace CefParser
                 if (line.StartsWith("#"))
                 {
                     if (line.StartsWith("#if CEF_API_ADDED("))
-                        ifStack = ifStack.Push(true);
+                        ifStack = ifStack.Push(IfState.True);
                     else if (line.StartsWith("#if CEF_API_REMOVED("))
-                        ifStack = ifStack.Push(false);
+                        ifStack = ifStack.Push(IfState.False);
                     else if (line.StartsWith("#endif"))
                         ifStack = ifStack.Pop();
+                    else if (line.StartsWith("#elif CEF_API_ADDED("))
+                    {
+                        var lastValue = ifStack.Peek();
+                        ifStack = ifStack.Pop().Push(lastValue == IfState.False ? IfState.True : IfState.Skip);
+                    }
                     else if (line.StartsWith("#else"))
                     {
-                        bool lastValue = ifStack.Peek();
-                        ifStack = ifStack.Pop().Push(!lastValue);
+                        var lastValue = ifStack.Peek();
+                        ifStack = ifStack.Pop().Push(lastValue != IfState.False ? IfState.Skip : IfState.True);
                     }
                     else
                         throw new FormatException($"Unsupported preprocessor macro ({line})");
-                    currentState = ifStack.IsEmpty || ifStack.All(a => a);
+                    currentState = ifStack.IsEmpty || ifStack.All(a => a == IfState.True);
                     continue;
                 }
 
