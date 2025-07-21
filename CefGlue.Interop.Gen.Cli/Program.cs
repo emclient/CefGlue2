@@ -1,6 +1,6 @@
 ﻿using CefParser;
 
-var headerFiles = Directory.GetFiles("D:\\cef2\\chromium\\src\\cef\\binary_distrib\\cef_binary_138.0.27-em-7204.3237+gedd7a02+chromium-138.0.7204.35_windows32\\include\\", "*.h", SearchOption.AllDirectories);
+var headerFiles = Directory.GetFiles("C:\\Users\\filip\\.nuget\\packages\\cef.runtime\\139.0.17-em\\include\\", "*.h", SearchOption.AllDirectories);
 
 var cp = new CefParser.CefParser(headerFiles);
 
