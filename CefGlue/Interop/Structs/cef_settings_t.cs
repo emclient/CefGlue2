@@ -56,7 +56,7 @@ namespace Xilium.CefGlue.Interop
 
         public static cef_settings_t* Alloc()
         {
-            var ptr = (cef_settings_t*)Marshal.AllocHGlobal(_sizeof);
+            var ptr = (cef_settings_t*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_settings_t();
             ptr->size = (UIntPtr)_sizeof;
             return ptr;
@@ -64,7 +64,7 @@ namespace Xilium.CefGlue.Interop
 
         public static void Free(cef_settings_t* ptr)
         {
-            Marshal.FreeHGlobal((IntPtr)ptr);
+            NativeMemory.Free(ptr);
         }
         #endregion
     }

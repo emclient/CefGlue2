@@ -28,7 +28,7 @@ namespace Xilium.CefGlue.Interop
 
         public static cef_urlparts_t* Alloc()
         {
-            var ptr = (cef_urlparts_t*)Marshal.AllocHGlobal(_sizeof);
+            var ptr = (cef_urlparts_t*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_urlparts_t { size = (UIntPtr)_sizeof };
             return ptr;
         }
@@ -48,7 +48,7 @@ namespace Xilium.CefGlue.Interop
                 libcef.string_clear(&self->query);
                 libcef.string_clear(&self->fragment);
 
-                Marshal.FreeHGlobal((IntPtr)self);
+                NativeMemory.Free(self);
             }
         }
 

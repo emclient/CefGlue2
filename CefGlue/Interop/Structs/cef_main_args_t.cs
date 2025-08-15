@@ -22,14 +22,14 @@
 
         public static cef_main_args_t_windows* Alloc()
         {
-            var ptr = (cef_main_args_t_windows*)Marshal.AllocHGlobal(_sizeof);
+            var ptr = (cef_main_args_t_windows*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_main_args_t_windows();
             return ptr;
         }
 
         public static void Free(cef_main_args_t_windows* ptr)
         {
-            Marshal.FreeHGlobal((IntPtr)ptr);
+            NativeMemory.Free(ptr);
         }
         #endregion
     }
@@ -50,14 +50,14 @@
 
         public static cef_main_args_t_posix* Alloc()
         {
-            var ptr = (cef_main_args_t_posix*)Marshal.AllocHGlobal(_sizeof);
+            var ptr = (cef_main_args_t_posix*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_main_args_t_posix();
             return ptr;
         }
 
         public static void Free(cef_main_args_t_posix* ptr)
         {
-            Marshal.FreeHGlobal((IntPtr)ptr);
+            NativeMemory.Free(ptr);
         }
         #endregion
     }

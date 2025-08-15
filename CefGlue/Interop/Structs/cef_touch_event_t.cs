@@ -31,7 +31,7 @@ namespace Xilium.CefGlue.Interop
 
         public static cef_touch_event_t* Alloc()
         {
-            var ptr = (cef_touch_event_t*)Marshal.AllocHGlobal(_sizeof);
+            var ptr = (cef_touch_event_t*)NativeMemory.AllocZeroed(_sizeof);
             *ptr = new cef_touch_event_t();
             ptr->size = (UIntPtr)_sizeof;
             return ptr;
@@ -39,7 +39,7 @@ namespace Xilium.CefGlue.Interop
 
         public static void Free(cef_touch_event_t* ptr)
         {
-            Marshal.FreeHGlobal((IntPtr)ptr);
+            NativeMemory.Free((IntPtr)ptr);
         }
         #endregion
 #endif

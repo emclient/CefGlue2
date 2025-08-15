@@ -71,7 +71,7 @@
                 size += 1 + encoding.GetByteCount(arg ?? "");
             }
 
-            byte** argv = (byte**)Marshal.AllocHGlobal(size);
+            byte** argv = (byte**)NativeMemory.AllocZeroed((nuint)size);
             byte* data = (byte*)argv + sizeOfArray;
 
             for (var i=0; i < args.Length; i++)
@@ -92,7 +92,7 @@
 
         private void FreeArgcArgvBlock(IntPtr ptr)
         {
-            Marshal.FreeHGlobal(ptr);
+            NativeMemory.Free((void*)ptr);
         }
 
         internal static void Free(cef_main_args_t* ptr)

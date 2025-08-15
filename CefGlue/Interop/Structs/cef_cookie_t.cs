@@ -41,14 +41,14 @@ namespace Xilium.CefGlue.Interop
 
         public static cef_cookie_t* Alloc()
         {
-            var ptr = (cef_cookie_t*)Marshal.AllocHGlobal(_sizeof);
+            var ptr = (cef_cookie_t*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_cookie_t { size = (UIntPtr)_sizeof };
             return ptr;
         }
 
         public static void Free(cef_cookie_t* ptr)
         {
-            Marshal.FreeHGlobal((IntPtr)ptr);
+            NativeMemory.Free(ptr);
         }
         #endregion
     }

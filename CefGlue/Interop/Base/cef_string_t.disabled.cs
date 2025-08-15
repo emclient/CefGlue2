@@ -33,7 +33,7 @@
         private static void dtor_impl(char* str)
         {
             if (OnDispose != null) OnDispose((IntPtr)str);
-            Marshal.FreeHGlobal((IntPtr)str);
+            NativeMemory.Free((IntPtr)str);
         }
 
         private static void copy_impl(string src, cef_string_t* dst)

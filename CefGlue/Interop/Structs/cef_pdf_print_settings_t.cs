@@ -48,14 +48,14 @@ namespace Xilium.CefGlue.Interop
 
         public static cef_pdf_print_settings_t* Alloc()
         {
-            var ptr = (cef_pdf_print_settings_t*)Marshal.AllocHGlobal(_sizeof);
+            var ptr = (cef_pdf_print_settings_t*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_pdf_print_settings_t { size = (UIntPtr)_sizeof };
             return ptr;
         }
 
         public static void Free(cef_pdf_print_settings_t* ptr)
         {
-            Marshal.FreeHGlobal((IntPtr)ptr);
+            NativeMemory.Free(ptr);
         }
         #endregion
     }
