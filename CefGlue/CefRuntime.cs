@@ -395,8 +395,8 @@
         /// </summary>
         public static bool AddCrossOriginWhitelistEntry(string sourceOrigin, string targetProtocol, string targetDomain, bool allowTargetSubdomains)
         {
-            if (string.IsNullOrEmpty("sourceOrigin")) throw new ArgumentNullException("sourceOrigin");
-            if (string.IsNullOrEmpty("targetProtocol")) throw new ArgumentNullException("targetProtocol");
+            if (string.IsNullOrEmpty(sourceOrigin)) throw new ArgumentNullException(nameof(sourceOrigin));
+            if (string.IsNullOrEmpty(targetProtocol)) throw new ArgumentNullException(nameof(targetProtocol));
 
             fixed (char* sourceOrigin_ptr = sourceOrigin)
             fixed (char* targetProtocol_ptr = targetProtocol)
@@ -421,8 +421,8 @@
         /// </summary>
         public static bool RemoveCrossOriginWhitelistEntry(string sourceOrigin, string targetProtocol, string targetDomain, bool allowTargetSubdomains)
         {
-            if (string.IsNullOrEmpty("sourceOrigin")) throw new ArgumentNullException("sourceOrigin");
-            if (string.IsNullOrEmpty("targetProtocol")) throw new ArgumentNullException("targetProtocol");
+            if (string.IsNullOrEmpty(sourceOrigin)) throw new ArgumentNullException(nameof(sourceOrigin));
+            if (string.IsNullOrEmpty(targetProtocol)) throw new ArgumentNullException(nameof(targetProtocol));
 
             fixed (char* sourceOrigin_ptr = sourceOrigin)
             fixed (char* targetProtocol_ptr = targetProtocol)
