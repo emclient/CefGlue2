@@ -863,6 +863,9 @@ namespace CefParser
                 writer.WriteLine("{");
 
                 writer.WriteLine($"\tprivate {iname}* _self;");
+                writer.WriteLine("\t// Set by Dispose() when the native CEF runtime still holds references.");
+                writer.WriteLine("\t// Teardown is then deferred to the release-at-zero path.");
+                writer.WriteLine("\tprivate int _disposeRequested;");
                 writer.WriteLine();
 
                 // ctor
@@ -886,7 +889,10 @@ namespace CefParser
                 writer.WriteLine($"\t\t_self->{basePrefix}_base._has_at_least_one_ref = &has_at_least_one_ref_unmanaged;");
                 writer.WriteLine($"\t\tcef_handler_block_t *ptrBlock = (cef_handler_block_t *)((nuint)_self + (nuint)sizeof({iname}));");
                 writer.WriteLine($"\t\tptrBlock->_refct = 0;");
-                writer.WriteLine($"\t\tptrBlock->_gcHandle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Weak));");
+                writer.WriteLine($"\t\t// The handle is strong for the lifetime of the managed object and never swapped.");
+                writer.WriteLine($"\t\t// Concurrent add_ref/release on multiple CEF threads only touch _refct,");
+                writer.WriteLine($"\t\t// so readers can always safely dereference _gcHandle (no free/reuse races).");
+                writer.WriteLine($"\t\tptrBlock->_gcHandle = GCHandle.ToIntPtr(GCHandle.Alloc(this, GCHandleType.Normal));");
                 writer.WriteLine("\t}");
                 writer.WriteLine();
 
@@ -899,10 +905,20 @@ namespace CefParser
 
                 writer.WriteLine("\tpublic void Dispose()");
                 writer.WriteLine("\t{");
-                writer.WriteLine($"\t\tif (_self != null && ((cef_handler_block_t *)((nuint)_self + (nuint)sizeof({iname})))->_refct != 0)");
-                writer.WriteLine("\t\t\tthrow new InvalidOperationException($\"Cannot dispose handler with an active reference from native CEF runtime\");");
-                writer.WriteLine("\t\tDispose(true);");
-                writer.WriteLine("\t\tGC.SuppressFinalize(this);");
+                writer.WriteLine("\t\t// Deferred teardown: if the native CEF runtime still holds references,");
+                writer.WriteLine("\t\t// it may keep invoking callbacks, so we must not free the handle or");
+                writer.WriteLine("\t\t// native block yet. Mark teardown requested; release-at-zero performs");
+                writer.WriteLine("\t\t// it once CEF is done with the object.");
+                writer.WriteLine("\t\tif (Interlocked.Exchange(ref _disposeRequested, 1) != 0)");
+                writer.WriteLine("\t\t{");
+                writer.WriteLine("\t\t\tGC.SuppressFinalize(this);");
+                writer.WriteLine("\t\t\treturn;");
+                writer.WriteLine("\t\t}");
+                writer.WriteLine($"\t\tif (_self == null || ((cef_handler_block_t *)((nuint)_self + (nuint)sizeof({iname})))->_refct == 0)");
+                writer.WriteLine("\t\t{");
+                writer.WriteLine("\t\t\tDispose(true);");
+                writer.WriteLine("\t\t\tGC.SuppressFinalize(this);");
+                writer.WriteLine("\t\t}");
                 writer.WriteLine("\t}");
                 writer.WriteLine();
 
@@ -912,8 +928,9 @@ namespace CefParser
                 // the property and return false. Ideally we want to enable auto-dispose for
                 // all the handlers but for compatibility with historic CefGlue versions we
                 // default to the list below. Any subclasses could choose to explicitly
-                // override it. Regular garbage collection can still collect the classes
-                // but there's no explicit lifetime guarantee.
+                // override it. The managed object is kept strongly rooted by the native
+                // block's GCHandle until teardown, so garbage collection never severs
+                // the native-to-managed link.
                 bool autoDispose =
                     csName
                     is "CefResourceHandler"
@@ -924,7 +941,9 @@ namespace CefParser
                     or "CefSetCookieCallback"
                     or "CefDeleteCookiesCallback"
                     or "CefResponseFilter"
-                    or "CefMediaSinkDeviceInfoCallback";
+                    or "CefMediaSinkDeviceInfoCallback"
+                    or "CefPrintCallback"
+                    or "CefPdfPrintCallback";
                 writer.WriteLine($"\tprotected virtual bool AutoDispose => {(autoDispose ? "true" : "false")};");
                 writer.WriteLine();
 
@@ -934,7 +953,9 @@ namespace CefParser
                 writer.WriteLine("\t\tif (_self != null)");
                 writer.WriteLine("\t\t{");
                 writer.WriteLine($"\t\t\tcef_handler_block_t *ptrBlock = (cef_handler_block_t *)((nuint)_self + (nuint)sizeof({iname}));");
-                writer.WriteLine($"\t\t\tGCHandle.FromIntPtr(ptrBlock->_gcHandle).Free();");
+                writer.WriteLine("\t\t\tDebug.Assert(ptrBlock->_refct == 0 || !disposing,");
+                writer.WriteLine($"\t\t\t\t$\"Disposing {csName} while the native CEF runtime still holds \" + ptrBlock->_refct + \" reference(s).\");");
+                writer.WriteLine("\t\t\tGCHandle.FromIntPtr(ptrBlock->_gcHandle).Free();");
                 writer.WriteLine($"\t\t\tNativeMemory.Free(_self);");
                 writer.WriteLine($"\t\t\t_self = null;");
                 writer.WriteLine("\t\t}");
@@ -944,15 +965,7 @@ namespace CefParser
                 writer.WriteLine($"\tprivate static void add_ref({iname}* self)");
                 writer.WriteLine("\t{");
                 writer.WriteLine($"\t\tcef_handler_block_t *ptrBlock = (cef_handler_block_t *)((nuint)self + (nuint)sizeof({iname}));");
-                writer.WriteLine("\t\tif (Interlocked.Increment(ref ptrBlock->_refct) == 1)");
-                writer.WriteLine("\t\t{");
-                writer.WriteLine("\t\t\tGCHandle _gcHandle = GCHandle.FromIntPtr(ptrBlock->_gcHandle);");
-                writer.WriteLine($"\t\t\t{csName}? _this = _gcHandle.Target as {csName};");
-                writer.WriteLine("\t\t\tDebug.Assert(_this is not null);");
-                writer.WriteLine("\t\t\tGCHandle _newGcHandle = GCHandle.Alloc(_this, GCHandleType.Normal);");
-                writer.WriteLine("\t\t\t_gcHandle.Free();");
-                writer.WriteLine("\t\t\tptrBlock->_gcHandle = GCHandle.ToIntPtr(_newGcHandle);");
-                writer.WriteLine("\t\t}");
+                writer.WriteLine("\t\tInterlocked.Increment(ref ptrBlock->_refct);");
                 writer.WriteLine("\t}");
                 writer.WriteLine();
 
@@ -969,14 +982,14 @@ namespace CefParser
                 writer.WriteLine("\t\t\tGCHandle _gcHandle = GCHandle.FromIntPtr(ptrBlock->_gcHandle);");
                 writer.WriteLine($"\t\t\t{csName}? _this = _gcHandle.Target as {csName};");
                 writer.WriteLine("\t\t\tDebug.Assert(_this is not null);");
-                writer.WriteLine("\t\t\tif (_this.AutoDispose)");
+                writer.WriteLine("\t\t\t// Teardown happens here when the managed side requested disposal while");
+                writer.WriteLine("\t\t\t// references were still outstanding, or for AutoDispose handlers whose");
+                writer.WriteLine("\t\t\t// lifetime is fully controlled by the native CEF runtime. Otherwise the");
+                writer.WriteLine("\t\t\t// object stays rooted until it is explicitly disposed or finalized.");
+                writer.WriteLine("\t\t\tif (_this.AutoDispose || Volatile.Read(ref _this._disposeRequested) != 0)");
                 writer.WriteLine("\t\t\t{");
                 writer.WriteLine("\t\t\t\t_this.Dispose();");
-                writer.WriteLine("\t\t\t\treturn 1;");
                 writer.WriteLine("\t\t\t}");
-                writer.WriteLine("\t\t\tGCHandle _newGcHandle = GCHandle.Alloc(_this, GCHandleType.Weak);");
-                writer.WriteLine("\t\t\t_gcHandle.Free();");
-                writer.WriteLine("\t\t\tptrBlock->_gcHandle = GCHandle.ToIntPtr(_newGcHandle);");
                 writer.WriteLine("\t\t\treturn 1;");
                 writer.WriteLine("\t\t}");
                 writer.WriteLine("\t\treturn 0;");
