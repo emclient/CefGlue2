@@ -863,9 +863,10 @@ namespace CefParser
                 writer.WriteLine("{");
 
                 writer.WriteLine($"\tprivate {iname}* _self;");
-                writer.WriteLine("\t// Set by Dispose() when the native CEF runtime still holds references.");
-                writer.WriteLine("\t// Teardown is then deferred to the release-at-zero path.");
-                writer.WriteLine("\tprivate int _disposeRequested;");
+                writer.WriteLine("\t// 0 = active, 1 = disposal requested, 2 = teardown claimed, 3 = disposed.");
+                writer.WriteLine("\t// Teardown is claimed atomically so Dispose() and release-at-zero cannot");
+                writer.WriteLine("\t// free the native block concurrently.");
+                writer.WriteLine("\tprivate int _disposeState;");
                 writer.WriteLine();
 
                 // ctor
@@ -896,28 +897,43 @@ namespace CefParser
                 writer.WriteLine("\t}");
                 writer.WriteLine();
 
-                // finalizer & dispose
-                writer.WriteLine($"\t~{csName}()");
-                writer.WriteLine("\t{");
-                writer.WriteLine("\t\tDispose(false);");
-                writer.WriteLine("\t}");
-                writer.WriteLine();
-
+                // dispose
                 writer.WriteLine("\tpublic void Dispose()");
                 writer.WriteLine("\t{");
                 writer.WriteLine("\t\t// Deferred teardown: if the native CEF runtime still holds references,");
                 writer.WriteLine("\t\t// it may keep invoking callbacks, so we must not free the handle or");
                 writer.WriteLine("\t\t// native block yet. Mark teardown requested; release-at-zero performs");
                 writer.WriteLine("\t\t// it once CEF is done with the object.");
-                writer.WriteLine("\t\tif (Interlocked.Exchange(ref _disposeRequested, 1) != 0)");
-                writer.WriteLine("\t\t{");
-                writer.WriteLine("\t\t\tGC.SuppressFinalize(this);");
+                writer.WriteLine("\t\tInterlocked.CompareExchange(ref _disposeState, 1, 0);");
+                writer.WriteLine("\t\tTryDispose();");
+                writer.WriteLine("\t\tGC.SuppressFinalize(this);");
+                writer.WriteLine("\t}");
+                writer.WriteLine();
+
+                writer.WriteLine("\tprivate void TryDispose()");
+                writer.WriteLine("\t{");
+                writer.WriteLine("\t\tif (Volatile.Read(ref _disposeState) != 1)");
                 writer.WriteLine("\t\t\treturn;");
-                writer.WriteLine("\t\t}");
-                writer.WriteLine($"\t\tif (_self == null || ((cef_handler_block_t *)((nuint)_self + (nuint)sizeof({iname})))->_refct == 0)");
+                writer.WriteLine();
+                writer.WriteLine($"\t\t{iname}* self = _self;");
+                writer.WriteLine("\t\tif (self == null)");
+                writer.WriteLine("\t\t\treturn;");
+                writer.WriteLine();
+                writer.WriteLine($"\t\tcef_handler_block_t *ptrBlock = (cef_handler_block_t *)((nuint)self + (nuint)sizeof({iname}));");
+                writer.WriteLine("\t\tif (Volatile.Read(ref ptrBlock->_refct) != 0)");
+                writer.WriteLine("\t\t\treturn;");
+                writer.WriteLine();
+                writer.WriteLine("\t\t// Only the thread that transitions 1 -> 2 owns teardown.");
+                writer.WriteLine("\t\tif (Interlocked.CompareExchange(ref _disposeState, 2, 1) != 1)");
+                writer.WriteLine("\t\t\treturn;");
+                writer.WriteLine();
+                writer.WriteLine("\t\ttry");
                 writer.WriteLine("\t\t{");
                 writer.WriteLine("\t\t\tDispose(true);");
-                writer.WriteLine("\t\t\tGC.SuppressFinalize(this);");
+                writer.WriteLine("\t\t}");
+                writer.WriteLine("\t\tfinally");
+                writer.WriteLine("\t\t{");
+                writer.WriteLine("\t\t\tVolatile.Write(ref _disposeState, 3);");
                 writer.WriteLine("\t\t}");
                 writer.WriteLine("\t}");
                 writer.WriteLine();
@@ -930,7 +946,9 @@ namespace CefParser
                 // default to the list below. Any subclasses could choose to explicitly
                 // override it. The managed object is kept strongly rooted by the native
                 // block's GCHandle until teardown, so garbage collection never severs
-                // the native-to-managed link.
+                // the native-to-managed link. Since that strong handle is a GC root,
+                // handlers for which AutoDispose is false must be explicitly disposed;
+                // a finalizer cannot provide a fallback for a self-rooted object.
                 bool autoDispose =
                     csName
                     is "CefResourceHandler"
@@ -953,7 +971,7 @@ namespace CefParser
                 writer.WriteLine("\t\tif (_self != null)");
                 writer.WriteLine("\t\t{");
                 writer.WriteLine($"\t\t\tcef_handler_block_t *ptrBlock = (cef_handler_block_t *)((nuint)_self + (nuint)sizeof({iname}));");
-                writer.WriteLine("\t\t\tDebug.Assert(ptrBlock->_refct == 0 || !disposing,");
+                writer.WriteLine("\t\t\tDebug.Assert(ptrBlock->_refct == 0,");
                 writer.WriteLine($"\t\t\t\t$\"Disposing {csName} while the native CEF runtime still holds \" + ptrBlock->_refct + \" reference(s).\");");
                 writer.WriteLine("\t\t\tGCHandle.FromIntPtr(ptrBlock->_gcHandle).Free();");
                 writer.WriteLine($"\t\t\tNativeMemory.Free(_self);");
@@ -977,19 +995,21 @@ namespace CefParser
                 writer.WriteLine($"\tprivate static int release({iname}* self)");
                 writer.WriteLine("\t{");
                 writer.WriteLine($"\t\tcef_handler_block_t *ptrBlock = (cef_handler_block_t *)((nuint)self + (nuint)sizeof({iname}));");
+                writer.WriteLine("\t\t// Resolve the stable strong handle before dropping the last reference.");
+                writer.WriteLine("\t\t// Once the count reaches zero, a concurrent Dispose() may own teardown.");
+                writer.WriteLine("\t\tGCHandle _gcHandle = GCHandle.FromIntPtr(ptrBlock->_gcHandle);");
+                writer.WriteLine($"\t\t{csName}? _this = _gcHandle.Target as {csName};");
+                writer.WriteLine("\t\tDebug.Assert(_this is not null);");
+                writer.WriteLine("\t\tbool autoDispose = _this.AutoDispose;");
                 writer.WriteLine("\t\tif (Interlocked.Decrement(ref ptrBlock->_refct) == 0)");
                 writer.WriteLine("\t\t{");
-                writer.WriteLine("\t\t\tGCHandle _gcHandle = GCHandle.FromIntPtr(ptrBlock->_gcHandle);");
-                writer.WriteLine($"\t\t\t{csName}? _this = _gcHandle.Target as {csName};");
-                writer.WriteLine("\t\t\tDebug.Assert(_this is not null);");
                 writer.WriteLine("\t\t\t// Teardown happens here when the managed side requested disposal while");
                 writer.WriteLine("\t\t\t// references were still outstanding, or for AutoDispose handlers whose");
-                writer.WriteLine("\t\t\t// lifetime is fully controlled by the native CEF runtime. Otherwise the");
-                writer.WriteLine("\t\t\t// object stays rooted until it is explicitly disposed or finalized.");
-                writer.WriteLine("\t\t\tif (_this.AutoDispose || Volatile.Read(ref _this._disposeRequested) != 0)");
-                writer.WriteLine("\t\t\t{");
-                writer.WriteLine("\t\t\t\t_this.Dispose();");
-                writer.WriteLine("\t\t\t}");
+                writer.WriteLine("\t\t\t// lifetime is fully controlled by the native CEF runtime. TryDispose()");
+                writer.WriteLine("\t\t\t// is separate from public Dispose(), so a deferred request can complete.");
+                writer.WriteLine("\t\t\tif (autoDispose)");
+                writer.WriteLine("\t\t\t\tInterlocked.CompareExchange(ref _this._disposeState, 1, 0);");
+                writer.WriteLine("\t\t\t_this.TryDispose();");
                 writer.WriteLine("\t\t\treturn 1;");
                 writer.WriteLine("\t\t}");
                 writer.WriteLine("\t\treturn 0;");
