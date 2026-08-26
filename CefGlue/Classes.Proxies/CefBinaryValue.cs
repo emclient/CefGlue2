@@ -10,7 +10,7 @@ public sealed unsafe partial class CefBinaryValue
     /// </summary>
     public static CefBinaryValue Create(byte[] data)
     {
-        ArgumentNullException.ThrowIfNull(nameof(data));
+        ArgumentNullException.ThrowIfNull(data);
         fixed (byte* data_ptr = data)
             return Create((IntPtr)data_ptr, (nuint)data.LongLength);
     }
@@ -21,9 +21,16 @@ public sealed unsafe partial class CefBinaryValue
     /// </summary>
     public long GetData(byte[] buffer, long bufferSize, long dataOffset)
     {
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(buffer.LongLength, dataOffset + bufferSize, nameof(dataOffset));
+        ArgumentNullException.ThrowIfNull(buffer);
+        ArgumentOutOfRangeException.ThrowIfNegative(bufferSize);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(bufferSize, buffer.LongLength);
+        ArgumentOutOfRangeException.ThrowIfNegative(dataOffset);
+
         fixed (byte* buffer_ptr = buffer)
-            return (long)GetData((IntPtr)buffer_ptr, (nuint)bufferSize, (nuint)dataOffset);
+            return (long)GetData(
+                (IntPtr)buffer_ptr,
+                checked((nuint)bufferSize),
+                checked((nuint)dataOffset));
     }
 
     public byte[] ToArray()

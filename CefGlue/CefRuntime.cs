@@ -641,17 +641,20 @@
         /// </summary>
         public static unsafe string Base64Encode(void* data, int size)
         {
+            ArgumentOutOfRangeException.ThrowIfNegative(size);
             var n_result = libcef.base64_encode(data, (UIntPtr)size);
             return cef_string_userfree.ToString(n_result);
         }
 
         public static string Base64Encode(byte[] bytes, int offset, int length)
         {
-            // TODO: check bounds
+            ArgumentNullException.ThrowIfNull(bytes);
+            if (offset < 0 || length < 0 || bytes.Length - offset < length)
+                throw new ArgumentOutOfRangeException();
 
-            fixed (byte* bytes_ptr = &bytes[offset])
+            fixed (byte* bytes_ptr = bytes)
             {
-                return Base64Encode(bytes_ptr, length);
+                return Base64Encode(bytes_ptr + offset, length);
             }
         }
 

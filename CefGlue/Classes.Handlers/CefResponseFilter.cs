@@ -25,6 +25,14 @@ public abstract unsafe partial class CefResponseFilter
                 long m_inRead;
                 long m_outWritten;
                 var result = Filter(m_in_stream, (long)dataInSize, out m_inRead, m_out_stream, (long)dataOutSize, out m_outWritten);
+                if (m_inRead < 0 || (nuint)m_inRead > dataInSize ||
+                    m_outWritten < 0 || (nuint)m_outWritten > dataOutSize)
+                {
+                    dataInRead = 0;
+                    dataOutWritten = 0;
+                    return CefResponseFilterStatus.Error;
+                }
+
                 dataInRead = (nuint)m_inRead;
                 dataOutWritten = (nuint)m_outWritten;
                 return result;
