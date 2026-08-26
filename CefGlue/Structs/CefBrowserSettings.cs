@@ -11,23 +11,54 @@
     /// tested. Many of these and other settings can also configured using command-
     /// line switches.
     /// </summary>
-    public sealed unsafe class CefBrowserSettings
+    public sealed unsafe class CefBrowserSettings : IDisposable
     {
-        private cef_browser_settings_t* _self;
+        private cef_browser_settings_t* _native;
+        private readonly bool _ownsNative;
+        private bool _disposed;
+
+        private cef_browser_settings_t* _self
+        {
+            get
+            {
+                if (_disposed) throw ExceptionBuilder.ObjectDisposed();
+                return _native;
+            }
+        }
 
         public CefBrowserSettings()
         {
-            _self = cef_browser_settings_t.Alloc();
+            _native = cef_browser_settings_t.Alloc();
+            _ownsNative = true;
         }
 
         internal CefBrowserSettings(cef_browser_settings_t* ptr)
         {
-            _self = ptr;
+            _native = ptr;
         }
 
-        internal void Dispose()
+        ~CefBrowserSettings()
         {
-            _self = null;
+            ReleaseNative();
+        }
+
+        public void Dispose()
+        {
+            ReleaseNative();
+            GC.SuppressFinalize(this);
+        }
+
+        private void ReleaseNative()
+        {
+            if (_disposed) return;
+
+            if (_ownsNative)
+            {
+                cef_browser_settings_t.Free(_native);
+            }
+
+            _native = null;
+            _disposed = true;
         }
 
         internal static CefBrowserSettings FromNative(cef_browser_settings_t* ptr)
@@ -37,7 +68,7 @@
 
         internal cef_browser_settings_t* ToNative()
         {
-            return _self;
+            return cef_browser_settings_t.Clone(_self);
         }
 
         /// <summary>

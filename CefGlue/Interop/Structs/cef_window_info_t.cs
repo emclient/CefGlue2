@@ -10,6 +10,15 @@ namespace Xilium.CefGlue.Interop
 
     internal struct cef_window_info_t
     {
+        internal unsafe static cef_window_info_t* Clone(cef_window_info_t* ptr)
+        {
+            if (OperatingSystem.IsWindows())
+                return (cef_window_info_t*)cef_window_info_t_windows.Clone((cef_window_info_t_windows*)ptr);
+            if (OperatingSystem.IsMacOS())
+                return (cef_window_info_t*)cef_window_info_t_mac.Clone((cef_window_info_t_mac*)ptr);
+            return (cef_window_info_t*)cef_window_info_t_linux.Clone((cef_window_info_t_linux*)ptr);
+        }
+
         internal unsafe static void Free(cef_window_info_t* ptr)
         {
             if (OperatingSystem.IsWindows())
@@ -50,6 +59,18 @@ namespace Xilium.CefGlue.Interop
         {
             var ptr = (cef_window_info_t_windows*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_window_info_t_windows { size = (UIntPtr)_sizeof };
+            return ptr;
+        }
+
+        public static cef_window_info_t_windows* Clone(cef_window_info_t_windows* source)
+        {
+            if (source is null) throw new ArgumentNullException(nameof(source));
+
+            var ptr = Alloc();
+            *ptr = *source;
+            ptr->size = (UIntPtr)_sizeof;
+            ptr->window_name = default;
+            cef_string_t.Copy(&source->window_name, &ptr->window_name);
             return ptr;
         }
 
@@ -94,6 +115,18 @@ namespace Xilium.CefGlue.Interop
             return ptr;
         }
 
+        public static cef_window_info_t_linux* Clone(cef_window_info_t_linux* source)
+        {
+            if (source is null) throw new ArgumentNullException(nameof(source));
+
+            var ptr = Alloc();
+            *ptr = *source;
+            ptr->size = (UIntPtr)_sizeof;
+            ptr->window_name = default;
+            cef_string_t.Copy(&source->window_name, &ptr->window_name);
+            return ptr;
+        }
+
         public static void Free(cef_window_info_t_linux* ptr)
         {
             if (ptr != null)
@@ -133,6 +166,18 @@ namespace Xilium.CefGlue.Interop
         {
             var ptr = (cef_window_info_t_mac*)NativeMemory.AllocZeroed((nuint)_sizeof);
             *ptr = new cef_window_info_t_mac { size = (UIntPtr)_sizeof };
+            return ptr;
+        }
+
+        public static cef_window_info_t_mac* Clone(cef_window_info_t_mac* source)
+        {
+            if (source is null) throw new ArgumentNullException(nameof(source));
+
+            var ptr = Alloc();
+            *ptr = *source;
+            ptr->size = (UIntPtr)_sizeof;
+            ptr->window_name = default;
+            cef_string_t.Copy(&source->window_name, &ptr->window_name);
             return ptr;
         }
 

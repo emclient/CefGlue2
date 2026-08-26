@@ -59,8 +59,44 @@ namespace Xilium.CefGlue.Interop
             return ptr;
         }
 
+        public static cef_browser_settings_t* Clone(cef_browser_settings_t* source)
+        {
+            if (source is null) throw new ArgumentNullException(nameof(source));
+
+            var ptr = Alloc();
+            *ptr = *source;
+            ptr->size = (UIntPtr)_sizeof;
+
+            // Reset shallow-copied strings before allocating independent copies.
+            ptr->standard_font_family = default;
+            ptr->fixed_font_family = default;
+            ptr->serif_font_family = default;
+            ptr->sans_serif_font_family = default;
+            ptr->cursive_font_family = default;
+            ptr->fantasy_font_family = default;
+            ptr->default_encoding = default;
+
+            cef_string_t.Copy(&source->standard_font_family, &ptr->standard_font_family);
+            cef_string_t.Copy(&source->fixed_font_family, &ptr->fixed_font_family);
+            cef_string_t.Copy(&source->serif_font_family, &ptr->serif_font_family);
+            cef_string_t.Copy(&source->sans_serif_font_family, &ptr->sans_serif_font_family);
+            cef_string_t.Copy(&source->cursive_font_family, &ptr->cursive_font_family);
+            cef_string_t.Copy(&source->fantasy_font_family, &ptr->fantasy_font_family);
+            cef_string_t.Copy(&source->default_encoding, &ptr->default_encoding);
+            return ptr;
+        }
+
         public static void Free(cef_browser_settings_t* ptr)
         {
+            if (ptr is null) return;
+
+            libcef.string_clear(&ptr->standard_font_family);
+            libcef.string_clear(&ptr->fixed_font_family);
+            libcef.string_clear(&ptr->serif_font_family);
+            libcef.string_clear(&ptr->sans_serif_font_family);
+            libcef.string_clear(&ptr->cursive_font_family);
+            libcef.string_clear(&ptr->fantasy_font_family);
+            libcef.string_clear(&ptr->default_encoding);
             NativeMemory.Free(ptr);
         }
         #endregion
