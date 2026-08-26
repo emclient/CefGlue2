@@ -11,7 +11,7 @@ public sealed unsafe partial class CefPostDataElement
     /// </summary>
     public void SetToBytes(byte[] bytes)
     {
-        ArgumentNullException.ThrowIfNull(nameof(bytes));
+        ArgumentNullException.ThrowIfNull(bytes);
         fixed (byte* bytes_ptr = bytes)
             SetToBytes((nuint)bytes.Length, (IntPtr)bytes_ptr);
     }

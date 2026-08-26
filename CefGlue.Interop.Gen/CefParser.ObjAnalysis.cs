@@ -39,7 +39,9 @@ namespace CefParser
 
                 { "cef_color_t", "uint" },
 
-                { "cef_platform_thread_id_t", "nint" },
+                // DWORD on Windows and pid_t on POSIX; both are 32-bit on the
+                // supported CEF architectures.
+                { "cef_platform_thread_id_t", "uint" },
             };
 
             private ArgClass argumentClass;
@@ -324,7 +326,7 @@ namespace CefParser
             public bool IsMultiArg =>
                 this.argumentClass
                 is ArgClass.SimpleVecByRef
-                or ArgClass.SimpleByRefConst
+                or ArgClass.SimpleVecByRefConst
                 or ArgClass.BoolVecByRef
                 or ArgClass.BoolVecByRefConst
                 or ArgClass.RefPtrVecByRef

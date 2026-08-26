@@ -23,8 +23,8 @@ public sealed unsafe partial class CefStreamWriter
         if (offset < 0 || length < 0 || buffer.Length - offset < length)
             throw new ArgumentOutOfRangeException();
 
-        fixed (byte* ptr = &buffer[offset])
-            return (int)Write((IntPtr)ptr, (nuint)offset, (nuint)length);
+        fixed (byte* ptr = buffer)
+            return (int)Write((IntPtr)(ptr + offset), 1, (nuint)length);
     }
 
     /// <summary>

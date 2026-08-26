@@ -7,6 +7,7 @@
 namespace Xilium.CefGlue.Interop
 {
     using System;
+    using System.Runtime.CompilerServices;
     using System.Runtime.InteropServices;
 
     internal struct cef_accelerated_paint_info_t
@@ -36,8 +37,7 @@ namespace Xilium.CefGlue.Interop
     {
         public UIntPtr size;
 
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public cef_accelerated_paint_native_pixmap_plane_t[] planes;
+        public cef_accelerated_paint_native_pixmap_plane_array_t planes;
 
         public int plane_count;
         public ulong modifier;
@@ -52,5 +52,11 @@ namespace Xilium.CefGlue.Interop
         public ulong offset;
         public ulong size;
         public int fd;
+    }
+
+    [InlineArray(4)]
+    internal struct cef_accelerated_paint_native_pixmap_plane_array_t
+    {
+        private cef_accelerated_paint_native_pixmap_plane_t _element0;
     }
 }

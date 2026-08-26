@@ -7,9 +7,16 @@ public abstract unsafe partial class CefWriteHandler
 {
     private partial nuint Write(IntPtr ptr, nuint size, nuint n)
     {
-        var length = (long)size * (long)n;
-        using var stream = new UnmanagedMemoryStream((byte*)ptr, length, length, FileAccess.Write);
-        return (UIntPtr)Write(stream, length);
+        if (size == 0 || n == 0 || size > unchecked((nuint)long.MaxValue) / n)
+            return 0;
+
+        var length = (long)(size * n);
+        using var stream = new UnmanagedMemoryStream((byte*)ptr, length, length, FileAccess.Read);
+        var bytesWritten = Write(stream, length);
+        if (bytesWritten < 0 || bytesWritten > length)
+            return 0;
+
+        return (nuint)bytesWritten / size;
     }
     
     /// <summary>
