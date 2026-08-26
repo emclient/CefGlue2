@@ -244,7 +244,7 @@ namespace CefParser
                         break;
 
                     case CefParser.ArgClass.StructByRef:
-                        writer.WriteLine($"\t\tvar _{argName} = {csharpType}.FromNative({quotedInteropArgName});");
+                        writer.WriteLine($"\t\t{(csharpType is "CefBrowserSettings" or "CefWindowInfo" ? "using var" : "var")} _{argName} = {csharpType}.FromNative({quotedInteropArgName});");
                         if (IsByValueStruct(csharpType))
                         {
                             argNames.Add($"ref _{argName}");
@@ -258,7 +258,7 @@ namespace CefParser
                         break;
 
                     case CefParser.ArgClass.StructByRefConst:
-                        writer.WriteLine($"\t\tvar _{argName} = {csharpType}.FromNative({quotedInteropArgName});");
+                        writer.WriteLine($"\t\t{(csharpType is "CefBrowserSettings" or "CefWindowInfo" ? "using var" : "var")} _{argName} = {csharpType}.FromNative({quotedInteropArgName});");
                         argNames.Add($"_{argName}");
                         csArgs.Add($"{csharpType} {quotedArgName}");
                         break;

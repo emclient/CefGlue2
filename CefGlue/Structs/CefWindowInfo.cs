@@ -31,7 +31,7 @@
     ///     </item>
     /// </list>
     /// </remarks>
-    public unsafe abstract class CefWindowInfo
+    public unsafe abstract class CefWindowInfo : IDisposable
     {
         public static CefWindowInfo Create()
         {
@@ -65,24 +65,31 @@
 
         ~CefWindowInfo()
         {
-            Dispose();
+            ReleaseNative();
         }
 
-        internal void Dispose()
+        public void Dispose()
         {
+            ReleaseNative();
+            GC.SuppressFinalize(this);
+        }
+
+        private void ReleaseNative()
+        {
+            if (_disposed) return;
+
             _disposed = true;
             if (_own)
             {
                 DisposeNativePointer();
+                _own = false;
             }
-            GC.SuppressFinalize(this);
         }
 
         internal cef_window_info_t* ToNative()
         {
-            var ptr = GetNativePointer();
-            _own = false;
-            return ptr;
+            ThrowIfDisposed();
+            return cef_window_info_t.Clone(GetNativePointer());
         }
 
         protected internal void ThrowIfDisposed()

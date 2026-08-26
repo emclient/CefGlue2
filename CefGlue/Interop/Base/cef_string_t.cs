@@ -35,6 +35,17 @@ internal unsafe partial struct cef_string_t
         }
     }
 
+    public static void Copy(cef_string_t* value, cef_string_t* str)
+    {
+        if (value is null)
+        {
+            libcef.string_clear(str);
+            return;
+        }
+
+        libcef.string_set(value->_str, value->_length, str, 1); // FIXME: do not ignore result
+    }
+
     public static string? ToString(cef_string_t* obj)
     {
         return obj is null ? null : new string(obj->_str, 0, (int)obj->_length);
